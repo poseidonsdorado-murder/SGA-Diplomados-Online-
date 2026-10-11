@@ -62,28 +62,55 @@ def crear_programa(tipo):
         return Bootcamp()
 
     return None
-
 #PILA PARA GUARDAR LAS ULTIMAS NOTAS
-
 pila_notas = []
 def registrar_alumno():
+    print("\nRegistro de Alumno")
 
-    print("/n Registro de Alumno")
-    cedula = input("Ingrese la cedula:")
-    nombre = input("Ingrese el nombre:")
-    correo = input("Ingrese el correo:")
-    programa = input("Ingrese el programa:")
+    cedula = input("Ingrese la cédula: ").strip()
 
+    # 1. Verificar que la cédula no esté registrada
+    try:
+        with open("alumnos.txt", "r", encoding="utf-8") as archivo:
+            for linea in archivo:
+                datos = linea.strip().split(",")
+
+                if datos[0] == cedula:
+                    print("Error: ya existe un alumno con esa cédula.")
+                    return
+
+    except FileNotFoundError:
+        # Si el archivo todavía no existe, podemos registrar el primer alumno.
+        pass
+
+    nombre = input("Ingrese el nombre: ").strip()
+    correo = input("Ingrese el correo: ").strip()
+
+    # 2. Validar que el programa sea uno de los permitidos
+    while True:
+        programa = input(
+            "Ingrese el programa (Curso/Diplomado/Bootcamp): "
+        ).strip().lower()
+
+        if programa in ("curso", "diplomado", "bootcamp"):
+            programa = programa.capitalize()
+            break
+
+        print("Error: programa inválido.")
+        print("Opciones válidas: Curso, Diplomado o Bootcamp.")
+
+    # Las notas comienzan en cero porque aún no se han registrado
     nota1 = 0
     nota2 = 0
     nota3 = 0
 
-    with open("alumnos.txt","a",
-              encoding="utf-8") as archivo:
-                        archivo.write(f"{cedula},{nombre},{correo},{programa},{nota1},{nota2},{nota3}\n")
+    with open("alumnos.txt", "a", encoding="utf-8") as archivo:
+        archivo.write(
+            f"{cedula},{nombre},{correo},{programa},"
+            f"{nota1},{nota2},{nota3}\n"
+        )
 
-                            
-    print("Alumno registrado con exito")
+    print("Alumno registrado con éxito.")
 def registrar_profesor():
         
         print("/n Registro de Profesor")
@@ -102,63 +129,84 @@ def registrar_profesor():
         encontrado = True
 def registrar_nota():
 
-    print("/n Registro de Notas")
+    print("\nRegistro de Notas")
 
-    cedula_buscada = input("Ingrese la cédula del alumno: ")
+    cedula_buscada = input(
+        "Ingrese la cédula del alumno: "
+    ).strip()
+
+    try:
+        with open("alumnos.txt", "r", encoding="utf-8") as archivo:
+            lineas = archivo.readlines()
+    except FileNotFoundError:
+        print("Error: todavía no existe el archivo de alumnos.")
+        return
 
     encontrado = False
     posicion_nota = None
     lineas_nuevas = []
+    nota = None
 
-    with open("alumnos.txt", "r", encoding="utf-8") as archivo:
-        lineas = archivo.readlines()
+    for linea in lineas:
+        datos = linea.strip().split(",")
 
-        for linea in lineas:
-            datos = linea.strip().split(",")
+        if len(datos) != 7:
+            lineas_nuevas.append(linea)
+            continue
 
-            if datos[0] == cedula_buscada:
-                print("\nAlumno encontrado.")
-                print("Nombre:", datos[1])
-                print("Programa:", datos[3])
-                print("Notas actuales:", datos[4], datos[5], datos[6])
+        if datos[0] == cedula_buscada:
+            encontrado = True
 
-                nota = float(input("Ingrese la nueva nota: "))
+            print("\nAlumno encontrado.")
+            print("Nombre:", datos[1])
+            print("Programa:", datos[3])
+            print("Notas actuales:", datos[4], datos[5], datos[6])
 
-                if datos[4] == "0":
-                    datos[4] = str(nota)
-                    posicion_nota = 4
+            if "0" not in datos[4:7]:
+                print("Error: el alumno ya tiene las 3 notas registradas.")
+                lineas_nuevas.append(linea)
+                continue
 
-                elif datos[5] == "0":
-                    datos[5] = str(nota)
-                    posicion_nota = 5
+            # Validar la nota antes de modificar el registro
+            while True:
+                entrada = input(
+                    "Ingrese la nueva nota (de 0 a 20): "
+                ).strip()
 
-                elif datos[6] == "0":
-                    datos[6] = str(nota)
-                    posicion_nota = 6
+                try:
+                    nota = float(entrada)
 
-                else:
-                    print("El alumno ya tiene las 3 notas registradas.")
+                    if 0 <= nota <= 20:
+                        break
 
-                encontrado = True
+                    print("Error: la nota debe estar entre 0 y 20.")
 
-            linea_actualizada = ",".join(datos) + "\n"
-            lineas_nuevas.append(linea_actualizada)
+                except ValueError:
+                    print("Error: debe ingresar un número válido.")
 
-    if encontrado:
+            # Buscar el primer espacio de nota disponible
+            for posicion in (4, 5, 6):
+                if float(datos[posicion]) == 0:
+                    datos[posicion] = str(nota)
+                    posicion_nota = posicion
+                    break
 
-        with open("alumnos.txt", "w", encoding="utf-8") as archivo:
-            archivo.writelines(lineas_nuevas)
+            linea = ",".join(datos) + "\n"
 
-        # Guardamos la acción en la pila
-        if posicion_nota is not None:
-            pila_notas.append(
-                (cedula_buscada, posicion_nota, str(nota))
-            )
+        lineas_nuevas.append(linea)
 
-        print("\nNota registrada correctamente.")
-
-    else:
+    if not encontrado:
         print("\nAlumno no encontrado.")
+        return
+
+    with open("alumnos.txt", "w", encoding="utf-8") as archivo:
+        archivo.writelines(lineas_nuevas)
+
+    if posicion_nota is not None:
+        pila_notas.append(
+            (cedula_buscada, posicion_nota, str(nota))
+        )
+        print("\nNota registrada correctamente.")
 def deshacer_nota():
      # Verificamos si la pila está vacía
          if not pila_notas:
